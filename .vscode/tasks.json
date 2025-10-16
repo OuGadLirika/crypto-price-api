@@ -1,0 +1,29 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Install Python deps",
+			"type": "shell",
+			"command": "python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Install Python deps (fish)",
+			"type": "shell",
+			"command": "python3 -m venv .venv; and . .venv/bin/activate.fish; and pip install -r requirements.txt",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Quick import check",
+			"type": "shell",
+			"command": ". .venv/bin/activate.fish; and python - <<'PY'\nimport importlib\nmods = [\n    'aiohttp',\n    'ccxt.async_support',\n    'sqlalchemy',\n    'dotenv',\n    'uvloop',\n]\nfor m in mods:\n    try:\n        importlib.import_module(m)\n        print(f'OK {m}')\n    except Exception as e:\n        print(f'ERR {m}: {e}')\nPY",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}

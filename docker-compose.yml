@@ -1,0 +1,56 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: qorpo-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: qorpo
+      POSTGRES_USER: qorpo_user
+      POSTGRES_PASSWORD: qorpo_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U qorpo_user -d qorpo"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  migration:
+    build: .
+    container_name: qorpo-migration
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://qorpo_user:qorpo_password@db:5432/qorpo
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+
+  app:
+    build: .
+    container_name: qorpo-app
+    restart: unless-stopped
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql+asyncpg://qorpo_user:qorpo_password@db:5432/qorpo
+      HOST: 0.0.0.0
+      PORT: 8000
+      PAGE_SIZE: 10
+      ENV: production
+      RUN_CREATE_ALL: "false"
+      ENABLE_UVLOOP: "true"
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/price/history?page=1')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  postgres_data:

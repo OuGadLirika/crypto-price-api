@@ -1,0 +1,23 @@
+# Docker
+.dockerignore
+__pycache__/
+*.pyc
+.venv/
+.env
+.git/
+.pytest_cache/
+*.db
+*.sqlite3
+
+# Python
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+
+# Tests
+.coverage
+htmlcov/
