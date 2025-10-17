@@ -16,12 +16,18 @@ class PriceController:
         raw = request.match_info.get("currency", "")
         try:
             currency_norm = CurrencyValidator.normalize_and_validate(raw)
-        except ValueError:
-            raise web.HTTPBadRequest(text="invalid currency")
+        except ValueError as e:
+            return web.json_response(
+                {"status": "error", "message": str(e) or "invalid currency"},
+                status=400
+            )
         try:
             bid = await self._exchange.get_bid_price_usdt_pair(currency_norm)
-        except ValueError:
-            raise web.HTTPBadRequest(text="currency not found")
+        except ValueError as e:
+            return web.json_response(
+                {"status": "error", "message": str(e) or "currency not found"},
+                status=400
+            )
         data = await self._currency.record_current_price(currency=currency_norm, price=bid)
         return web.json_response({"status": "ok", "data": data})
 

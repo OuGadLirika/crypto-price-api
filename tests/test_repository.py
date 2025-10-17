@@ -1,5 +1,6 @@
 import pytest
 import pytest_asyncio
+from decimal import Decimal
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy import text
 
@@ -30,16 +31,14 @@ async def test_session(test_db_engine):
 async def test_currency_repository_add_and_list(test_session):
     repo = CurrencyRepository(test_session)
     
-    # Add a record
     now = datetime.now()
-    entity = await repo.add(currency="btc", date_=now, price=50000.123)
+    entity = await repo.add(currency="btc", date_=now, price=Decimal("50000.123"))
     await test_session.commit()
     
     assert entity.id is not None
     assert entity.currency == "btc"
-    assert entity.price == 50000.123
+    assert entity.price == Decimal("50000.123")
     
-    # List paginated
     items, total = await repo.list_paginated(page=1, page_size=10)
     assert total == 1
     assert len(items) == 1
@@ -50,21 +49,17 @@ async def test_currency_repository_add_and_list(test_session):
 async def test_currency_repository_delete_all(test_session):
     repo = CurrencyRepository(test_session)
     
-    # Add records
     now = datetime.now()
-    await repo.add(currency="btc", date_=now, price=50000)
-    await repo.add(currency="eth", date_=now, price=3000)
+    await repo.add(currency="btc", date_=now, price=Decimal("50000"))
+    await repo.add(currency="eth", date_=now, price=Decimal("3000"))
     await test_session.commit()
     
-    # Verify count
     items, total = await repo.list_paginated(page=1, page_size=10)
     assert total == 2
     
-    # Delete all
     deleted = await repo.delete_all()
     await test_session.commit()
     assert deleted == 2
     
-    # Verify empty
     items, total = await repo.list_paginated(page=1, page_size=10)
     assert total == 0

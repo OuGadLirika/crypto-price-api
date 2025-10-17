@@ -4,6 +4,7 @@ Run with actual PostgreSQL if DATABASE_URL is set.
 """
 import pytest
 import pytest_asyncio
+from decimal import Decimal
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
 from app.db.engine import Base
@@ -35,11 +36,11 @@ async def test_e2e_flow(sqlite_session):
     assert currency_norm == "BTC"
     
     # 2. Record prices
-    data1 = await service.record_current_price(currency="BTC", price=50000.12)
-    assert data1["currency"] == "btc"  # stored lowercase
-    assert data1["price"] == 50000.12
+    data1 = await service.record_current_price(currency="BTC", price=Decimal("50000.12"))
+    assert data1["currency"] == "btc"
+    assert data1["price"] == "50000.12"
     
-    data2 = await service.record_current_price(currency="ETH", price=3000.45)
+    data2 = await service.record_current_price(currency="ETH", price=Decimal("3000.45"))
     assert data2["currency"] == "eth"
     
     # 3. Get history (paginated)

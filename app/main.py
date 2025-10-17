@@ -4,15 +4,19 @@ import asyncio
 import logging
 import os
 
-import uvloop
 from aiohttp import web
 from aiohttp_apispec import setup_aiohttp_apispec, docs
 
 from app.config import AppConfig
+from app.controllers.health_controller import HealthController
+from app.controllers.metrics_controller import MetricsController
+from app.controllers.price_controller import PriceController
 from app.db.engine import Base, create_engine_and_sessionmaker
 from app.middleware.error_middleware import error_middleware
+from app.middleware.metrics_middleware import metrics_middleware
 from app.services.currency_service import CurrencyService
 from app.services.exchange_service import ExchangeService
+from app.services.metrics_service import MetricsService
 
 
 logger = logging.getLogger(__name__)
@@ -31,25 +35,39 @@ async def _dispose_db(app: web.Application) -> None:
     await app["db_engine"].dispose()
 
 
+async def _dispose_exchange(app: web.Application) -> None:
+    await app["exchange_service"].close()
+
+
 async def create_app(config: AppConfig | None = None) -> web.Application:
     if config is None:
         config = AppConfig.load()
 
     if config.enable_uvloop:
-        uvloop.install()
+        try:
+            import uvloop
+            uvloop.install()
+        except ImportError:
+            logger.warning(
+                "uvloop requested but not installed, using default event loop"
+            )
 
     engine, session_factory = create_engine_and_sessionmaker(config.database_url)
 
-    app = web.Application(middlewares=[error_middleware])
+    app = web.Application(middlewares=[error_middleware, metrics_middleware])
     app["config"] = config
     app["db_engine"] = engine
     app["session_factory"] = session_factory
     app["debug"] = os.getenv("DEBUG", "0") in {"1", "true", "yes"}
+    
+    app["exchange_service"] = ExchangeService()
+    
+    metrics_service = MetricsService()
+    app["metrics_service"] = metrics_service
 
     app.on_startup.append(_init_db)
     app.on_cleanup.append(_dispose_db)
-
-    from app.controllers.price_controller import PriceController
+    app.on_cleanup.append(_dispose_exchange)
 
     @docs(
         tags=["price"],
@@ -69,11 +87,11 @@ async def create_app(config: AppConfig | None = None) -> web.Application:
     )
     async def get_price(request: web.Request):
         async with request.app["session_factory"]() as session:
-            controller = PriceController(ExchangeService(), CurrencyService(session, config.page_size))
-            try:
-                return await controller.get_price(request)
-            finally:
-                await controller._exchange.close()
+            controller = PriceController(
+                request.app["exchange_service"],
+                CurrencyService(session, config.page_size)
+            )
+            return await controller.get_price(request)
 
     @docs(
         tags=["price"],
@@ -92,11 +110,11 @@ async def create_app(config: AppConfig | None = None) -> web.Application:
     )
     async def get_history(request: web.Request):
         async with request.app["session_factory"]() as session:
-            controller = PriceController(ExchangeService(), CurrencyService(session, config.page_size))
-            try:
-                return await controller.get_history(request)
-            finally:
-                await controller._exchange.close()
+            controller = PriceController(
+                request.app["exchange_service"],
+                CurrencyService(session, config.page_size)
+            )
+            return await controller.get_history(request)
 
     @docs(
         tags=["price"],
@@ -108,12 +126,40 @@ async def create_app(config: AppConfig | None = None) -> web.Application:
     )
     async def delete_history(request: web.Request):
         async with request.app["session_factory"]() as session:
-            controller = PriceController(ExchangeService(), CurrencyService(session, config.page_size))
-            try:
-                return await controller.delete_history(request)
-            finally:
-                await controller._exchange.close()
+            controller = PriceController(
+                request.app["exchange_service"],
+                CurrencyService(session, config.page_size)
+            )
+            return await controller.delete_history(request)
 
+    health_controller = HealthController(session_factory)
+    metrics_controller = MetricsController(metrics_service)
+    
+    @docs(
+        tags=["monitoring"],
+        summary="Health check",
+        description="Check application health and database connectivity",
+        responses={
+            200: {"description": "Application is healthy"},
+            503: {"description": "Application is degraded"},
+        },
+    )
+    async def health(request: web.Request):
+        return await health_controller.check(request)
+    
+    @docs(
+        tags=["monitoring"],
+        summary="Application metrics",
+        description="Get application metrics (requests, errors, uptime)",
+        responses={
+            200: {"description": "Metrics retrieved"},
+        },
+    )
+    async def metrics(request: web.Request):
+        return await metrics_controller.get_metrics(request)
+
+    app.router.add_get("/health", health)
+    app.router.add_get("/metrics", metrics)
     app.router.add_get("/price/{currency}", get_price)
     app.router.add_get("/price/history", get_history)
     app.router.add_delete("/price/history", delete_history)

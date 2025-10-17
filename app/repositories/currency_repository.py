@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Sequence
 
 from sqlalchemy import delete, select, func
@@ -12,7 +13,7 @@ class CurrencyRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def add(self, currency: str, date_, price: float) -> Currency:
+    async def add(self, currency: str, date_, price: Decimal) -> Currency:
         entity = Currency(currency=currency, date_=date_, price=price)
         self._session.add(entity)
         await self._session.flush()

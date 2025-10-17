@@ -1,4 +1,5 @@
 import asyncio
+from decimal import Decimal
 from aiohttp import web
 import pytest
 
@@ -7,18 +8,18 @@ from app.services.validation import CurrencyValidator
 
 
 class DummyExchange:
-    async def get_bid_price_usdt_pair(self, currency: str) -> float:
+    async def get_bid_price_usdt_pair(self, currency: str) -> Decimal:
         if currency.upper() == "FAKE":
             raise ValueError("Currency not found")
-        return 123.45
+        return Decimal("123.45")
 
     async def close(self):
         pass
 
 
 class DummyCurrencyService:
-    async def record_current_price(self, currency: str, price: float) -> dict:
-        return {"currency": currency, "price": price, "id": 1, "date_": "2025-10-16T00:00:00"}
+    async def record_current_price(self, currency: str, price: Decimal) -> dict:
+        return {"currency": currency, "price": str(price), "id": 1, "date_": "2025-10-16T00:00:00"}
 
     async def get_history(self, page: int):
         return type("Page", (), {"__dict__": {"items": [], "page": page, "page_size": 10, "total": 0, "total_pages": 1}})()
