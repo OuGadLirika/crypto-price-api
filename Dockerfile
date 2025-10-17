@@ -26,4 +26,4 @@ USER appuser
 EXPOSE 8000
 
 # Default command (can be overridden in docker-compose)
-CMD ["gunicorn", "-c", "gunicorn.conf.py", "app.wsgi:app"]
+CMD ["python", "-m", "app.main"]

@@ -39,11 +39,6 @@ alembic upgrade head
 python -m app.main
 ```
 
-### Gunicorn
-```bash
-gunicorn -c gunicorn.conf.py app.wsgi:app
-```
-
 ## Tests
 
 ```bash
