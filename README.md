@@ -6,8 +6,8 @@ Async REST API for live crypto prices from KuCoin, with PostgreSQL storage.
 - Get current price for any currency
 - View and clear price history
 - Health and metrics endpoints
-- Docker and local run support
 - Swagger API docs
+- Main launch: `deploy.sh` script (choose Docker or local mode)
 
 ## Endpoints
 | Method | Path                    | Description                |
@@ -21,11 +21,17 @@ Async REST API for live crypto prices from KuCoin, with PostgreSQL storage.
 Swagger UI: http://localhost:8000/docs
 
 ## Quick Start
-**Docker:**
+**Recommended:**
+Run `./deploy.sh` and choose mode:
+- `1` — Full Docker deployment
+- `2` — Local app + PostgreSQL in Docker
+
+**Manual:**
+Docker only:
 ```bash
 docker-compose up --build
 ```
-**Local:**
+Local only:
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate  # or .venv/bin/activate.fish
